@@ -30,6 +30,16 @@ public class ProductController {
     public ResponseEntity<List<Product>> getProductsByCategory(@PathVariable String category) {
         return ResponseEntity.ok(productService.getProductsByCategory(category));
     }
+
+    @GetMapping("/battery/{serialNumber}")
+    public ResponseEntity<Product> getProductBySerialNumber(@PathVariable String serialNumber) {
+        return ResponseEntity.ok(productService.getProductBySerialNumber(serialNumber));
+    }
+
+    @GetMapping("/batteries")
+    public ResponseEntity<List<Product>> getBatteryProducts() {
+        return ResponseEntity.ok(productService.getBatteryProducts());
+    }
     
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {

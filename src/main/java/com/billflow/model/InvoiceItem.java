@@ -1,6 +1,7 @@
 package com.billflow.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -9,12 +10,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "invoice_items")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class InvoiceItem {
     
     @Id
@@ -40,4 +44,9 @@ public class InvoiceItem {
     @Positive(message = "Price must be positive")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+    @ElementCollection
+    @CollectionTable(name = "invoice_item_serials", joinColumns = @JoinColumn(name = "invoice_item_id"))
+    @Column(name = "serial_number")
+    private List<String> serialNumbers = new ArrayList<>();
 }

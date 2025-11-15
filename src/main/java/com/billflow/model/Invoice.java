@@ -1,5 +1,6 @@
 package com.billflow.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,7 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +18,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Invoice {
     
     @Id
@@ -34,11 +36,11 @@ public class Invoice {
     
     @NotNull(message = "Date is required")
     @Column(nullable = false)
-    private LocalDate date;
-    
+    private LocalDateTime date;
+
 //    @NotNull(message = "Due date is required")
 //    @Column(nullable = false)
-    private LocalDate dueDate;
+    private LocalDateTime dueDate;
     
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<InvoiceItem> items = new ArrayList<>();

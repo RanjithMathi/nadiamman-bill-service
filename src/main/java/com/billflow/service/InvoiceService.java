@@ -2,10 +2,12 @@ package com.billflow.service;
 
 import com.billflow.dto.InvoiceRequest;
 import com.billflow.dto.InvoiceStats;
+import com.billflow.model.BatterySerial;
 import com.billflow.model.Client;
 import com.billflow.model.Invoice;
 import com.billflow.model.InvoiceItem;
 import com.billflow.model.Product;
+import com.billflow.repository.BatterySerialRepository;
 import com.billflow.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,12 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class InvoiceService {
     
     private final InvoiceRepository invoiceRepository;
+    private final BatterySerialRepository batterySerialRepository;
     private final ClientService clientService;
     private final ProductService productService;
     
@@ -38,6 +42,17 @@ public class InvoiceService {
     
     public List<Invoice> getInvoicesByClientId(Long clientId) {
         return invoiceRepository.findByClientId(clientId);
+    }
+
+    public List<Invoice> getInvoicesBySerialNumber(String serialNumber) {
+        List<BatterySerial> batterySerials = batterySerialRepository.findBySerialNumber(serialNumber)
+            .map(List::of)
+            .orElse(List.of());
+
+        return batterySerials.stream()
+            .map(bs -> bs.getInvoiceItem().getInvoice())
+            .distinct()
+            .collect(java.util.stream.Collectors.toList());
     }
     
     public InvoiceStats getInvoiceStats() {
@@ -96,21 +111,64 @@ public class InvoiceService {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (InvoiceRequest.InvoiceItemRequest itemRequest : request.getItems()) {
             Product product = productService.getProductById(itemRequest.getProductId());
-            
+
             InvoiceItem item = new InvoiceItem();
             item.setProduct(product);
             item.setQuantity(itemRequest.getQuantity());
             item.setPrice(itemRequest.getPrice());
-            
+
+            // Handle serial numbers for batteries
+            if (Boolean.TRUE.equals(product.getIsBattery())) {
+                if (itemRequest.getSerialNumbers() == null || itemRequest.getSerialNumbers().isEmpty()) {
+                    throw new RuntimeException("Serial numbers are required for battery products");
+                }
+                if (itemRequest.getSerialNumbers().size() != itemRequest.getQuantity()) {
+                    throw new RuntimeException("Number of serial numbers must match quantity for batteries");
+                }
+
+                // Validate that all serial numbers are available in the product
+                for (String serialNumber : itemRequest.getSerialNumbers()) {
+                    if (!product.getSerialNumbers().contains(serialNumber)) {
+                        throw new RuntimeException("Serial number not available in stock: " + serialNumber);
+                    }
+                    // Check if serial number already sold
+                    if (batterySerialRepository.findBySerialNumber(serialNumber).isPresent()) {
+                        throw new RuntimeException("Serial number already sold: " + serialNumber);
+                    }
+                }
+
+                item.setSerialNumbers(itemRequest.getSerialNumbers());
+
+                // Create BatterySerial entries
+                for (String serialNumber : itemRequest.getSerialNumbers()) {
+                    BatterySerial batterySerial = new BatterySerial();
+                    batterySerial.setSerialNumber(serialNumber);
+                    batterySerial.setProduct(product);
+                    batterySerial.setInvoiceItem(item);
+                    batterySerial.setPurchaseDate(request.getDate());
+                    batterySerial.setWarrantyStartDate(request.getDate());
+                    // Use product's warranty duration
+                    batterySerial.setWarrantyEndDate(request.getDate().plusMonths(product.getWarrantyDurationMonths()));
+                    batterySerial.setWarrantyStatus("active");
+                    // Save battery serial - assuming repository exists
+                    batterySerialRepository.save(batterySerial);
+                }
+
+                // Remove sold serials from product and update stock
+                product.getSerialNumbers().removeAll(itemRequest.getSerialNumbers());
+                product.setStock(product.getSerialNumbers().size());
+            } else {
+                // For non-batteries, decrease stock by quantity
+                product.setStock(product.getStock() - itemRequest.getQuantity());
+            }
+
             invoice.addItem(item);
-            
+
             BigDecimal itemTotal = itemRequest.getPrice()
                 .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
             subtotal = subtotal.add(itemTotal);
-            
-            //update stock - decrease the stock count
-            product.setStock(product.getStock() - item.getQuantity());
-            productService.updateProduct(product.getId(),product);
+
+            productService.updateProduct(product.getId(), product);
         }
         
         // Calculate totals
@@ -130,8 +188,14 @@ public class InvoiceService {
         // Step 1: Restore stock from existing invoice items before clearing them
         for (InvoiceItem existingItem : invoice.getItems()) {
             Product product = existingItem.getProduct();
-            // Restore old quantity back to stock
-            product.setStock(product.getStock() + existingItem.getQuantity());
+            if (Boolean.TRUE.equals(product.getIsBattery())) {
+                // For batteries, add back the serial numbers to available stock
+                product.getSerialNumbers().addAll(existingItem.getSerialNumbers());
+                product.setStock(product.getSerialNumbers().size());
+            } else {
+                // For non-batteries, restore by quantity
+                product.setStock(product.getStock() + existingItem.getQuantity());
+            }
             productService.updateProduct(product.getId(), product);
         }
 
@@ -162,14 +226,57 @@ public class InvoiceService {
             item.setQuantity(itemRequest.getQuantity());
             item.setPrice(itemRequest.getPrice());
 
+            // Handle serial numbers for batteries
+            if (Boolean.TRUE.equals(product.getIsBattery())) {
+                if (itemRequest.getSerialNumbers() == null || itemRequest.getSerialNumbers().isEmpty()) {
+                    throw new RuntimeException("Serial numbers are required for battery products");
+                }
+                if (itemRequest.getSerialNumbers().size() != itemRequest.getQuantity()) {
+                    throw new RuntimeException("Number of serial numbers must match quantity for batteries");
+                }
+
+                // Validate that all serial numbers are available in the product
+                for (String serialNumber : itemRequest.getSerialNumbers()) {
+                    if (!product.getSerialNumbers().contains(serialNumber)) {
+                        throw new RuntimeException("Serial number not available in stock: " + serialNumber);
+                    }
+                    // Check if serial number already sold
+                    if (batterySerialRepository.findBySerialNumber(serialNumber).isPresent()) {
+                        throw new RuntimeException("Serial number already sold: " + serialNumber);
+                    }
+                }
+
+                item.setSerialNumbers(itemRequest.getSerialNumbers());
+
+                // Create BatterySerial entries
+                for (String serialNumber : itemRequest.getSerialNumbers()) {
+                    BatterySerial batterySerial = new BatterySerial();
+                    batterySerial.setSerialNumber(serialNumber);
+                    batterySerial.setProduct(product);
+                    batterySerial.setInvoiceItem(item);
+                    batterySerial.setPurchaseDate(request.getDate());
+                    // Warranty starts on purchase date
+                    batterySerial.setWarrantyStartDate(request.getDate());
+                    // Use product's warranty duration
+                    batterySerial.setWarrantyEndDate(request.getDate().plusMonths(product.getWarrantyDurationMonths()));
+                    batterySerial.setWarrantyStatus("active");
+                    batterySerialRepository.save(batterySerial);
+                }
+
+                // Remove sold serials from product and update stock
+                product.getSerialNumbers().removeAll(itemRequest.getSerialNumbers());
+                product.setStock(product.getSerialNumbers().size());
+            } else {
+                // For non-batteries, decrease stock by quantity
+                product.setStock(product.getStock() - itemRequest.getQuantity());
+            }
+
             invoice.addItem(item);
 
             BigDecimal itemTotal = itemRequest.getPrice()
                     .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
             subtotal = subtotal.add(itemTotal);
 
-            // Decrease stock for new quantities
-            product.setStock(product.getStock() - itemRequest.getQuantity());
             productService.updateProduct(product.getId(), product);
         }
 
@@ -198,7 +305,14 @@ public class InvoiceService {
         // Step 1: Restore stock for all items in this invoice
         for (InvoiceItem item : invoice.getItems()) {
             Product product = item.getProduct();
-            product.setStock(product.getStock() + item.getQuantity());
+            if (Boolean.TRUE.equals(product.getIsBattery())) {
+                // For batteries, add back the serial numbers to available stock
+                product.getSerialNumbers().addAll(item.getSerialNumbers());
+                product.setStock(product.getSerialNumbers().size());
+            } else {
+                // For non-batteries, restore by quantity
+                product.setStock(product.getStock() + item.getQuantity());
+            }
             productService.updateProduct(product.getId(), product);
         }
 

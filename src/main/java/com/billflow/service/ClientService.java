@@ -25,9 +25,9 @@ public class ClientService {
     
     @Transactional
     public Client createClient(Client client) {
-        if (clientRepository.existsByEmail(client.getEmail())) {
-            throw new RuntimeException("Client with email already exists: " + client.getEmail());
-        }
+//        if (clientRepository.existsByEmail(client.getEmail())) {
+//            throw new RuntimeException("Client with email already exists: " + client.getEmail());
+//        }
         return clientRepository.save(client);
     }
     

@@ -66,6 +66,11 @@ public class InvoiceController {
         return ResponseEntity.ok(updatedInvoice);
     }
     
+    @GetMapping("/serial/{serialNumber}")
+    public ResponseEntity<List<Invoice>> getInvoicesBySerialNumber(@PathVariable String serialNumber) {
+        return ResponseEntity.ok(invoiceService.getInvoicesBySerialNumber(serialNumber));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
         invoiceService.deleteInvoice(id);

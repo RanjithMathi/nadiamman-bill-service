@@ -22,16 +22,16 @@ public class Client {
     @Column(nullable = false)
     private String name;
     
-    @NotBlank(message = "Email is required")
+//    @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
-    @Column(nullable = false, unique = true)
+    @Column(nullable = true)
     private String email;
     
     @NotBlank(message = "Phone is required")
     @Column(nullable = false)
     private String phone;
     
-    @NotBlank(message = "Address is required")
-    @Column(nullable = false, length = 500)
+//    @NotBlank(message = "Address is required")
+    @Column(nullable = true, length = 500)
     private String address;
 }

@@ -26,22 +26,41 @@ public class ProductService {
     public List<Product> getProductsByCategory(String category) {
         return productRepository.findByCategory(category);
     }
+
+    public Product getProductBySerialNumber(String serialNumber) {
+        return productRepository.findBySerialNumber(serialNumber)
+            .orElseThrow(() -> new RuntimeException("Product not found with serial number: " + serialNumber));
+    }
+
+    public List<Product> getBatteryProducts() {
+        return productRepository.findByIsBattery(true);
+    }
     
     @Transactional
     public Product createProduct(Product product) {
+        if (Boolean.TRUE.equals(product.getIsBattery())) {
+            product.setStock(product.getSerialNumbers() != null ? product.getSerialNumbers().size() : 0);
+        }
         return productRepository.save(product);
     }
     
     @Transactional
     public Product updateProduct(Long id, Product productDetails) {
         Product product = getProductById(id);
-        
+
         product.setName(productDetails.getName());
         product.setDescription(productDetails.getDescription());
         product.setPrice(productDetails.getPrice());
         product.setCategory(productDetails.getCategory());
-        product.setStock(productDetails.getStock());
-        
+        product.setSerialNumbers(productDetails.getSerialNumbers());
+        product.setIsBattery(productDetails.getIsBattery());
+        product.setWarrantyDurationMonths(productDetails.getWarrantyDurationMonths());
+        if (Boolean.TRUE.equals(product.getIsBattery())) {
+            product.setStock(product.getSerialNumbers() != null ? product.getSerialNumbers().size() : 0);
+        } else {
+            product.setStock(productDetails.getStock());
+        }
+
         return productRepository.save(product);
     }
     

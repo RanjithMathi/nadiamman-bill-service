@@ -1,5 +1,6 @@
 package com.billflow.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,12 +10,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
     
     @Id
@@ -25,8 +29,7 @@ public class Product {
     @Column(nullable = false)
     private String name;
     
-    @NotBlank(message = "Description is required")
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = true, length = 1000)
     private String description;
     
     @NotNull(message = "Price is required")
@@ -37,8 +40,19 @@ public class Product {
     @NotBlank(message = "Category is required")
     @Column(nullable = false)
     private String category;
-    
-//    @NotBlank(message = "stock is required")
+
+    @ElementCollection
+    @CollectionTable(name = "product_serials", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "serial_number")
+    private List<String> serialNumbers = new ArrayList<>();
+
+    @Column(nullable = false)
+    private Boolean isBattery = false;
+
+    @Column(nullable = false)
+    private Integer warrantyDurationMonths = 12; // Default 1 year for batteries
+
+    //    @NotBlank(message = "stock is required")
     @Column(nullable = false)
     private Integer stock;
 }
