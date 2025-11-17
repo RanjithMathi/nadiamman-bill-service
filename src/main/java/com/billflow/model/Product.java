@@ -41,6 +41,10 @@ public class Product {
     @Column(nullable = false)
     private String category;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "supplier_id", nullable = true)
+    private Supplier supplier;
+
     @ElementCollection
     @CollectionTable(name = "product_serials", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "serial_number")

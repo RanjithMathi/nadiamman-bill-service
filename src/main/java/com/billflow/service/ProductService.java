@@ -1,6 +1,7 @@
 package com.billflow.service;
 
 import com.billflow.model.Product;
+import com.billflow.model.Supplier;
 import com.billflow.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,8 +12,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-    
+
     private final ProductRepository productRepository;
+    private final SupplierService supplierService;
     
     public List<Product> getAllProducts() {
         return productRepository.findAll();
@@ -35,9 +37,17 @@ public class ProductService {
     public List<Product> getBatteryProducts() {
         return productRepository.findByIsBattery(true);
     }
+
+    public List<String> getAvailableSerialNumbers(Long productId) {
+        Product product = getProductById(productId);
+        return product.getSerialNumbers();
+    }
     
     @Transactional
     public Product createProduct(Product product) {
+        if (product.getSupplier() == null) {
+            throw new RuntimeException("Supplier is required for products");
+        }
         if (Boolean.TRUE.equals(product.getIsBattery())) {
             product.setStock(product.getSerialNumbers() != null ? product.getSerialNumbers().size() : 0);
         }
@@ -48,10 +58,15 @@ public class ProductService {
     public Product updateProduct(Long id, Product productDetails) {
         Product product = getProductById(id);
 
+        if (productDetails.getSupplier() == null) {
+            throw new RuntimeException("Supplier is required for products");
+        }
+
         product.setName(productDetails.getName());
         product.setDescription(productDetails.getDescription());
         product.setPrice(productDetails.getPrice());
         product.setCategory(productDetails.getCategory());
+        product.setSupplier(productDetails.getSupplier());
         product.setSerialNumbers(productDetails.getSerialNumbers());
         product.setIsBattery(productDetails.getIsBattery());
         product.setWarrantyDurationMonths(productDetails.getWarrantyDurationMonths());

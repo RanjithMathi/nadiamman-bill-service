@@ -40,6 +40,11 @@ public class ProductController {
     public ResponseEntity<List<Product>> getBatteryProducts() {
         return ResponseEntity.ok(productService.getBatteryProducts());
     }
+
+    @GetMapping("/{id}/serials")
+    public ResponseEntity<List<String>> getAvailableSerialNumbers(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getAvailableSerialNumbers(id));
+    }
     
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {

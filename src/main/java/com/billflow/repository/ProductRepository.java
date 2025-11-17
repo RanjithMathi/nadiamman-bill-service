@@ -17,4 +17,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findBySerialNumber(@Param("serialNumber") String serialNumber);
 
     List<Product> findByIsBattery(Boolean isBattery);
+    List<Product> findBySupplierId(Long supplierId);
 }
